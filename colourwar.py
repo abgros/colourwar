@@ -1,8 +1,7 @@
 import numpy as np
 import pygame
 import os
-from math import floor
-from random import randint, choice, random
+from random import choice
 from time import time
 
 COLOURS = [(255, 255, 255), 
