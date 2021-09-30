@@ -1,6 +1,6 @@
 import numpy as np
 import pygame
-import os
+import cv2
 from random import choice
 from time import time
 
@@ -28,6 +28,31 @@ REPEATS = 10**12
 REFRESH = True # improves performance on smaller grids but decreases it on larger ones
 DRAW_FREQ = 200 # only applies if REFRESH is True
 MAX_FPS = 1000000
+
+# You can read an image to start
+# It might take some time if it's a large image
+# ----------------------------------------------------------------
+image_path = None
+if image_path:
+    grid = []
+    img = cv2.imread(image_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   # BGR -> RGB
+    for row in range(len(img)):
+        grid += [[]]
+        for col in range(len(img[row])):
+            p = tuple(img[row, col])
+            if p in COLOURS:
+                p = COLOURS.index(p)
+            else:
+                p = 0
+            grid[row] += [p]
+        if row % 50 == 49 and row > 0:
+            print("Read row", row + 1)
+    grid = np.array(grid)
+    GRID_SIZE = grid.shape[::-1]
+else:
+    grid = np.random.randint(len(COLOURS), size=(GRID_SIZE[::-1]))
+
 # ----------------------------------------------------------------
 
 WIN_SIZE = (1000, 1000)
@@ -37,7 +62,6 @@ R_HEIGHT = WIN_SIZE[1]/GRID_SIZE[1]
 WIN = pygame.display.set_mode(WIN_SIZE)
 pygame.display.set_caption("COLOUR WAR")
 
-grid = np.random.randint(len(COLOURS), size=(GRID_SIZE[::-1]))
 
 def neighbours(point, array):
     output = []
