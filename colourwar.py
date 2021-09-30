@@ -21,46 +21,50 @@ COLOURS = [(255, 255, 255),
            (255, 0, 255), 
            (128, 0, 128)]
 
-# Performance/benchmarking
+# Settings
 # ----------------------------------------------------------------
-GRID_SIZE = (100, 100) # (WIDTH, HEIGHT)
+WIN_SIZE = (1000, 1000) # (HEIGHT, WIDTH)
+GRID_SIZE = (100, 100) # (HEIGHT, WIDTH)
 REPEATS = 10**12
-REFRESH = True # improves performance on smaller grids but decreases it on larger ones
-DRAW_FREQ = 200 # only applies if REFRESH is True
 MAX_FPS = 1000000
+
+# This setting, if enabled causes the entire grid to refresh every DRAW_FREQ iterations.
+# If disabled, the program only draws a single cell every iteration.
+# Enabling it improves performance on smaller grids but decreases it on larger ones.
+REFRESH = True
+
+# If REFRESH is True, this controls how often the displayed grid refreshes.
+DRAW_FREQ = 200
 
 # You can read an image to start
 # It might take some time if it's a large image
-# ----------------------------------------------------------------
+# The size of the image will override GRID_SIZE
 image_path = None
-if image_path:
-    grid = []
-    img = cv2.imread(image_path)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   # BGR -> RGB
-    for row in range(len(img)):
-        grid += [[]]
-        for col in range(len(img[row])):
-            p = tuple(img[row, col])
-            if p in COLOURS:
-                p = COLOURS.index(p)
-            else:
-                p = 0
-            grid[row] += [p]
-        if row % 50 == 49 and row > 0:
-            print("Read row", row + 1)
-    grid = np.array(grid)
-    GRID_SIZE = grid.shape[::-1]
-else:
-    grid = np.random.randint(len(COLOURS), size=(GRID_SIZE[::-1]))
 
 # ----------------------------------------------------------------
 
-WIN_SIZE = (1000, 1000)
-R_WIDTH = WIN_SIZE[0]/GRID_SIZE[0]
-R_HEIGHT = WIN_SIZE[1]/GRID_SIZE[1]
 
-WIN = pygame.display.set_mode(WIN_SIZE)
-pygame.display.set_caption("COLOUR WAR")
+def set_grid(GRID_SIZE, image_path):
+    if image_path:
+        grid = []
+        img = cv2.imread(image_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)   # BGR -> RGB
+        for row in range(len(img)):
+            grid += [[]]
+            for col in range(len(img[row])):
+                p = tuple(img[row, col])
+                if p in COLOURS:
+                    p = COLOURS.index(p)
+                else:
+                    p = 0
+                grid[row] += [p]
+            if row % 50 == 49 and row > 0:
+                print("Read row", row + 1)
+        grid = np.array(grid)
+    else:
+        grid = np.random.randint(len(COLOURS), size=(GRID_SIZE))
+
+    return grid
 
 
 def neighbours(point, array):
@@ -78,24 +82,36 @@ def neighbours(point, array):
 
 
 def unique_neighbours(point, array):
-    return [c for c in neighbours(point, array) if grid[c] != grid[point]]
+    return [c for c in neighbours(point, array) if array[c] != array[point]]
 
 
-def draw_window(grid):
+def draw_window(WIN, grid):
+    cell_height = WIN_SIZE[0]/grid.shape[0]
+    cell_width = WIN_SIZE[1]/grid.shape[1]
+    
     WIN.fill((0, 0, 0))
     for i in range(len(grid)):
         for j in range(len(grid[i])):
             pygame.draw.rect(WIN, COLOURS[grid[i, j]],
-                             pygame.Rect(j * R_WIDTH, i * R_HEIGHT, R_WIDTH, R_HEIGHT))    
+                             pygame.Rect(j * cell_width, i * cell_height, cell_width, cell_height))    
     pygame.display.update()
         
     
-def draw_cell(cell, grid):
-    pygame.draw.rect(WIN, COLOURS[grid[cell]], pygame.Rect(cell[1] * R_WIDTH, cell[0] * R_HEIGHT, R_WIDTH, R_HEIGHT))
+def draw_cell(WIN, cell, grid):
+    cell_height = WIN_SIZE[0]/grid.shape[0]
+    cell_width = WIN_SIZE[1]/grid.shape[1]
+    
+    pygame.draw.rect(WIN, COLOURS[grid[cell]], pygame.Rect(cell[1] * cell_width, cell[0] * cell_height, cell_width, cell_height))
     pygame.display.update()
 
 
 def main():
+    # Initialize window
+    WIN = pygame.display.set_mode(WIN_SIZE[::-1]) # WIN_SIZE is (width, height) so I invert it for consistency
+    pygame.display.set_caption("COLOUR WAR")
+    grid = set_grid(GRID_SIZE, image_path)
+    draw_window(WIN, grid)
+    
     # Initialize active cells
     active_dict = dict()
     active_list = []
@@ -105,9 +121,9 @@ def main():
                 active_dict[(i, j)] = True
                 active_list += [(i, j)]
 
-    draw_window(grid)
     start = time()
 
+    # Game loop
     for i in range(REPEATS):
         pygame.time.Clock().tick(MAX_FPS)
         for event in pygame.event.get():     
@@ -131,10 +147,10 @@ def main():
                         active_list += [cell]
 
             if not REFRESH:
-                draw_cell(target_cell, grid)
+                draw_cell(WIN, target_cell, grid)
 
         if i % DRAW_FREQ == 0 and REFRESH:
-            draw_window(grid)
+            draw_window(WIN, grid)
         
     print(time() - start)
 
